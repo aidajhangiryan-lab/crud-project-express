@@ -1,54 +1,66 @@
-const db = require("../config/db");
+const Task = require("../models/Task");
 
 async function getAllTasks() {
-  const [rows] = await db.query("SELECT * FROM tasks ORDER BY created_at DESC");
-  return rows;
+  return await Task.findAll({ order: [["createdAt", "DESC"]] });
+}
+
+async function getAllByPriority() {
+  return await Task.findAll({ order: [["priority", "DESC"]] });
 }
 
 async function getTaskById(id) {
-  const [rows] = await db.query("SELECT * FROM tasks WHERE id = ?", [id]);
-  return rows[0];
+  return await Task.findByPk(id);
+}
+async function createTask(title, description, priority) {
+  return await Task.create({ title, description, priority });
 }
 
-async function createTask(title, description) {
-  const [result] = await db.query(
-    "INSERT INTO tasks (title, description) VALUES (?, ?)",
-    [title, description],
-  );
+async function updateTask(id, title, priority, description) {
+  const task = await Task.findByPk(id);
+  if (!task) return null;
 
-  return getTaskById(result.insertId);
+  await task.update({ title, priority, description });
+  return task;
 }
 
-async function updateTask(id, title, description) {
-  await db.query("UPDATE tasks SET title = ?, description = ? WHERE id = ?", [
-    title,
-    description,
-    id,
-  ]);
+async function updatePriority(id, priority) {
+  const task = await Task.findByPk(id);
+  if (!task) return null;
 
-  return await getTaskById(id);
+  await task.update({
+    priority,
+  });
+  return task;
 }
 
 async function makeNew(id) {
-  await db.query("UPDATE tasks SET is_done = 0 WHERE id = ?", [id]);
-  return { id };
+  const task = await Task.findByPk(id);
+  if (!task) return null;
+
+  await task.update({ isDone: false });
+  return task;
 }
 
 async function makeDone(id) {
-  await db.query("UPDATE tasks SET is_done = 1 WHERE id = ?", [id]);
-  return { id };
+  const task = await Task.findByPk(id);
+  if (!task) return null;
+
+  await task.update({ isDone: true });
+  return task;
 }
 
 async function deleteTask(id) {
-  await db.query("DELETE FROM tasks WHERE id = ?", [id]);
-  return { id };
+  const deletedCount = await Task.destroy({ where: { id } });
+  return deletedCount > 0;
 }
 
 module.exports = {
   getAllTasks,
   getTaskById,
+  getAllByPriority,
   createTask,
   updateTask,
+  updatePriority,
   deleteTask,
   makeDone,
   makeNew,

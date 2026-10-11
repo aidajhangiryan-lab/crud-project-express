@@ -1,14 +1,26 @@
 <template>
-  <div class="task-card" :class="{ done: isDone }">
+  <div
+    class="task-card"
+    :class="[{ done: isDone }, `priority-${item.priority}`]"
+  >
     <div class="task-header">
       <h3 class="task-title">{{ item.title }}</h3>
       <div class="task-actions">
         <input type="checkbox" v-model="isDone" class="task-checkbox" />
-        <button class="menu-button" @click="showMenu = !showMenu">⋮</button>
-        <div v-if="showMenu" class="task-menu">
-          <button @click="openEdit">Update</button>
-          <button @click="openDelete">Delete</button>
-        </div>
+        <button ref="menuBtn" class="menu-button" @click="toggleMenu">⋮</button>
+
+        <Teleport to="body">
+          <div
+            v-if="showMenu"
+            ref="menuEl"
+            class="task-menu"
+            :style="menuStyle"
+          >
+            <button @click="openEdit">Update</button>
+            <button @click="openPriority">Change Priority</button>
+            <button @click="openDelete">Delete</button>
+          </div>
+        </Teleport>
       </div>
     </div>
     <p class="task-date">{{ formattedDate }}</p>
@@ -25,16 +37,41 @@
     </Teleport>
   </div>
 </template>
+
 <script setup>
 import { ref, computed, watch, onMounted, onBeforeUnmount } from "vue";
 import TaskModal from "./TaskModal.vue";
 import { useTaskStore } from "@/store/task.js";
+
 const taskStore = useTaskStore();
 const props = defineProps({ item: { type: Object, required: true } });
-const isDone = ref(Boolean(props.item.is_done));
+const isDone = ref(Boolean(props.item.isDone));
 const showMenu = ref(false);
 const showModal = ref(false);
-const modalMode = ref("edit");
+const modalMode = ref("");
+
+const menuBtn = ref(null);
+const menuEl = ref(null);
+const menuStyle = ref({});
+const MENU_WIDTH = 160;
+
+function updateMenuPosition() {
+  const rect = menuBtn.value.getBoundingClientRect();
+  menuStyle.value = {
+    top: `${rect.bottom + 6}px`,
+    left: `${Math.max(8, rect.right - MENU_WIDTH)}px`,
+    width: `${MENU_WIDTH}px`,
+  };
+}
+
+const toggleMenu = () => {
+  if (!showMenu.value) updateMenuPosition();
+  showMenu.value = !showMenu.value;
+};
+
+const closeMenu = () => {
+  showMenu.value = false;
+};
 
 const openEdit = () => {
   modalMode.value = "edit";
@@ -44,6 +81,12 @@ const openEdit = () => {
 
 const openDelete = () => {
   modalMode.value = "delete";
+  showMenu.value = false;
+  showModal.value = true;
+};
+
+const openPriority = () => {
+  modalMode.value = "priority";
   showMenu.value = false;
   showModal.value = true;
 };
@@ -62,9 +105,12 @@ const formattedDate = computed(() => {
 });
 
 function handleClickOutside(event) {
-  if (!event.target.closest(".task-actions")) {
-    showMenu.value = false;
-  }
+  if (
+    menuBtn.value?.contains(event.target) ||
+    menuEl.value?.contains(event.target)
+  )
+    return;
+  showMenu.value = false;
 }
 
 watch(isDone, async (newValue) => {
@@ -77,14 +123,20 @@ watch(isDone, async (newValue) => {
 
 onMounted(() => {
   document.addEventListener("click", handleClickOutside);
+  window.addEventListener("scroll", closeMenu, true);
+  window.addEventListener("resize", closeMenu);
 });
 
 onBeforeUnmount(() => {
   document.removeEventListener("click", handleClickOutside);
+  window.removeEventListener("scroll", closeMenu, true);
+  window.removeEventListener("resize", closeMenu);
 });
 </script>
+
 <style scoped>
 .task-card {
+  position: relative;
   width: 330px;
   max-width: none;
   background: #ffffff;
@@ -123,7 +175,6 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 8px;
-  position: relative;
 }
 .task-checkbox {
   width: 18px;
@@ -144,30 +195,31 @@ onBeforeUnmount(() => {
 .menu-button:hover {
   color: #604b54;
 }
+
 .task-menu {
-  position: absolute;
-  right: 0;
-  top: 28px;
-  width: 120px;
+  position: fixed;
+  z-index: 1000;
   background: white;
   border: 1px solid #ebcdd8;
   border-radius: 10px;
   box-shadow: 0 5px 15px rgba(133, 82, 103, 0.15);
-  z-index: 10;
   overflow: hidden;
 }
 .task-menu button {
+  display: block;
   width: 100%;
   border: none;
   background: white;
   padding: 10px 12px;
   text-align: left;
+  white-space: nowrap;
   cursor: pointer;
   color: #604b54;
 }
 .task-menu button:hover {
   background: #fff3f7;
 }
+
 .task-date {
   margin: 6px 0 0;
   font-size: 0.75rem;
@@ -179,5 +231,26 @@ onBeforeUnmount(() => {
   font-size: 0.9rem;
   color: #604b54;
   line-height: 1.5;
+}
+
+
+.task-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 8px;
+  background: var(--priority-color);
+  border-radius: 16px 0 0 16px;
+}
+.task-card.priority-high {
+  --priority-color: #a51f42; /* Deep burgundy */
+}
+.task-card.priority-medium {
+  --priority-color: #efaaaf; /* Vivid rose */
+}
+.task-card.priority-low {
+  --priority-color: #f6d1dd; /* Light pink */
 }
 </style>

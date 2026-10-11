@@ -6,6 +6,13 @@
       <label>Title</label>
       <input type="text" v-model="title" placeholder="Enter task title..." />
 
+      <label>Priority</label>
+      <select v-model="priority">
+        <option value="low">Low</option>
+        <option value="medium">Medium</option>
+        <option value="high">High</option>
+      </select>
+
       <label>Description</label>
       <textarea
         v-model="description"
@@ -23,17 +30,20 @@ import { useTaskStore } from "../store/task.js";
 
 const taskStore = useTaskStore();
 const title = ref("");
+const priority = ref("low");
 const description = ref("");
 
 async function handleCreating() {
-  await taskStore.createTask(title.value, description.value);
+  await taskStore.createTask(title.value, description.value, priority.value);
 
   title.value = "";
   description.value = "";
+  priority.value = "low";
 }
 </script>
 
 <style scoped>
+@import url("https://fonts.googleapis.com/css2?family=Ballet:opsz@16..72&family=Molle:ital@1&family=Monsieur+La+Doulaise&family=Parisienne&display=swap");
 .task-form {
   width: 100%;
   max-width: 600px;
@@ -56,8 +66,9 @@ async function handleCreating() {
 
 h1 {
   margin-bottom: 28px;
-  color: #fff;
-  font-size: 26px;
+  color: #3e2723;
+  font-size: 28px;
+  font-weight: 800;
   letter-spacing: 1px;
 }
 
@@ -124,5 +135,30 @@ button:hover {
   box-shadow:
     0 0 10px rgba(255, 255, 255, 0.7),
     0 0 25px rgba(255, 255, 255, 0.4);
+}
+
+input,
+textarea,
+select {
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid #ebcdd8;
+  border-radius: 12px;
+  outline: none;
+  background: #ffffff;
+  color: #604b54;
+  font-size: 15px;
+  transition: 0.2s ease;
+}
+
+select {
+  cursor: pointer;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: #d9a0b5;
+  box-shadow: 0 0 0 3px rgba(217, 160, 181, 0.15);
 }
 </style>
